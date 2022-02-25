@@ -1,0 +1,48 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: misterabdul/jekyll-builder:4.2.1-alpine-3.15
+    steps:
+      - checkout
+      - run: |
+          bundle install
+          jekyll build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+  deploy:
+    docker:
+      - image: misterabdul/jekyll-builder:4.2.1-alpine-3.15
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - add_ssh_keys:
+          fingerprints:
+            - "cf:a1:d3:cf:67:bb:6d:03:ed:93:9a:b9:80:50:0c:4f"
+      - run: |
+          echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
+          rsync -avce "ssh" ./_site/* $REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH
+          cp -r $(pwd)/_site /tmp/artifacts
+      - store_artifacts:
+          path: /tmp/artifacts
+
+workflows:
+  version: 2
+  build-and-deploy:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only:
+                - master
+      - deploy:
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - build

@@ -11,14 +11,14 @@ jobs:
             - rubygems-v1-{{ checksum "Gemfile.lock" }}
             - rubygems-v1-fallback
       - run:
-          name: Bundle Install
+          name: Install bundle gem dependencies
           command: bundle check || bundle install
       - save_cache:
           key: rubygems-v1-{{ checksum "Gemfile.lock" }}
           paths:
             - vendor/bundle
       - run:
-          name: Jekyll Build
+          name: Generate jekyll static site
           command: bundle exec jekyll build
       - persist_to_workspace:
           root: .
@@ -34,10 +34,15 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "cf:a1:d3:cf:67:bb:6d:03:ed:93:9a:b9:80:50:0c:4f"
-      - run: |
-          echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
-          rsync -avce "ssh" ./_site/* $REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH
-          cp -r $(pwd)/_site /tmp/artifacts/
+      - run:
+          name: Add remote hostkey
+          command: echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
+      - run:
+          name: Deploy to remote server
+          command: rsync -avce "ssh" ./_site/* $REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH
+      - run:
+          name: Copy generate site to artifacts directory
+          command: cp -r $(pwd)/_site /tmp/artifacts/
       - store_artifacts:
           path: /tmp/artifacts/_site
 
